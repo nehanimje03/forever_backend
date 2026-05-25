@@ -1,0 +1,33 @@
+# Virtual environment
+venv/
+.env
+
+# Django stuff
+*.log
+local_settings.py
+db.sqlite3
+
+# Static files
+staticfiles/
+static/
+
+# Media files 
+media/
+
+# VS Code
+.vscode/
+
+# Windows system files
+Thumbs.db
+
+# migrations
+authentication/migrations
+custom_admin/migrations
+orders/migrations
+products/migrations
+
+# pycache 
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
