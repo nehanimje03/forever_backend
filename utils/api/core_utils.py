@@ -187,7 +187,6 @@ def integer_field_validator(request, fields, source="data"):
 
 
 def image_files_type_validator(request, required_fields):
-
     for field in required_fields:
         file = request.FILES.get(field)
 
@@ -198,7 +197,6 @@ def image_files_type_validator(request, required_fields):
             return Response({"status": "fail","message": f"{BAD_REQUEST} - Invalid file for {field}."},status=status.HTTP_400_BAD_REQUEST)
         
         max_size = 5 * 1024 * 1024 
-
         if file.size > max_size:
             return Response({"status": "fail", "message": f"{BAD_REQUEST} - File size should be less than 5MB."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -209,33 +207,17 @@ def image_files_type_validator(request, required_fields):
     return None
 
 
-
-
-
-
 def send_whatsapp_message(mobile, message):
-
     try:
+        mobile = (str(mobile).replace(" ", "").replace("+91", ""))
+        client = Client(settings.TWILIO_ACCOUNT_SID,settings.TWILIO_AUTH_TOKEN)
 
-        mobile = (
-            str(mobile)
-            .replace(" ", "")
-            .replace("+91", "")
-        )
-
-        client = Client(
-            settings.TWILIO_ACCOUNT_SID,
-            settings.TWILIO_AUTH_TOKEN
-        )
-
-        response = client.messages.create(
+        client.messages.create(
             body=message,
             from_=settings.TWILIO_WHATSAPP_NUMBER,
             to=f"whatsapp:+91{mobile}"
         )
-
-        print("WhatsApp Sent :", response.sid)
+        return True
 
     except Exception as e:
-
-        print("WhatsApp Error :", str(e))
+        return False

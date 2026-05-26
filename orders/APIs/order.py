@@ -105,256 +105,92 @@ class CreateOrderAPIView(APIView):
                     tax_amount=tax_amount,
                     total_amount=total_amount,
                     payment_method=payment_method,
-
                     payment_status=("COD"if payment_method == "COD"else "PENDING"),
                     status="PENDING",
                     created_by=user
                 )
                 for item in cart_items:
-
-                    product = (
-                        Product.objects
-                        .select_for_update()
-                        .get(id=item.product.id)
-                    )
-
+                    product = (Product.objects.select_for_update().get(id=item.product.id))
                     mrp = Decimal(str(product.price))
-
-                    discount_percentage = Decimal(
-                        str(product.discount_percentage or 0)
-                    )
-
-                    discount_amount = (
-                        mrp * discount_percentage
-                    ) / Decimal("100")
-
-                    selling_price = (
-                        mrp - discount_amount
-                    )
-
-                    item_total = (
-                        selling_price * item.quantity
-                    )
-
-                    # =============================================
-                    # PRODUCT IMAGE
-                    # =============================================
+                    discount_percentage = Decimal(str(product.discount_percentage or 0))
+                    discount_amount = (mrp * discount_percentage) / Decimal("100")
+                    selling_price = (mrp - discount_amount)
+                    item_total = (selling_price * item.quantity)
 
                     image = product.product_image.first()
-
-                    image_url = (
-                        request.build_absolute_uri(
-                            image.image.url
-                        )
-                        if image else None
-                    )
-
-                    # =============================================
-                    # CREATE ORDER ITEM
-                    # =============================================
+                    image_url = (request.build_absolute_uri(image.image.url)if image else None)
 
                     order_item = OrderItem.objects.create(
-
                         order=order,
-
                         product=product,
-
                         product_name=product.name,
-
                         product_image=image_url,
-
                         product_price=selling_price,
-
                         original_price=mrp,
-
-                        discount_percentage=int(
-                            discount_percentage
-                        ),
-
+                        discount_percentage=int(discount_percentage),
                         quantity=item.quantity,
-
                         size=getattr(item, "size", None),
-
                         color=getattr(item, "color", None)
                     )
 
-                    # =============================================
-                    # REDUCE STOCK
-                    # =============================================
+                    product.stock = (F("stock") - item.quantity)
+                    product.save(update_fields=["stock"])
 
-                    product.stock = (
-                        F("stock") - item.quantity
-                    )
-
-                    product.save(
-                        update_fields=["stock"]
-                    )
-
-                    # =============================================
-                    # RESPONSE DATA
-                    # =============================================
-
-                    order_items_response.append(
-                        {
+                    order_items_response.append({
                             "order_item_id": order_item.id,
-
                             "product_id": product.id,
-
                             "product_name": product.name,
-
                             "product_image": image_url,
-
                             "quantity": item.quantity,
-
-                            "size": getattr(
-                                item,
-                                "size",
-                                None
-                            ),
-
-                            "color": getattr(
-                                item,
-                                "color",
-                                None
-                            ),
-
+                            "size": getattr(item,"size",None),
+                            "color": getattr(item,"color",None),
                             "price_details": {
-
                                 "mrp": float(mrp),
-
-                                "selling_price": float(
-                                    selling_price
-                                ),
-
-                                "discount_percentage": float(
-                                    discount_percentage
-                                ),
-
-                                "saved_amount": float(
-                                    discount_amount * item.quantity
-                                )
+                                "selling_price": float(selling_price),
+                                "discount_percentage": float(discount_percentage),
+                                "saved_amount": float(discount_amount * item.quantity)
                             },
-
-                            "total_amount": float(
-                                item_total
-                            )
+                            "total_amount": float(item_total)
                         }
                     )
-
-                # =================================================
-                # CLEAR CART
-                # =================================================
-
-                cart_items.update(
-                    is_deleted=True
-                )
-
-                # =================================================
-                # TRACKING ENTRY
-                # =================================================
-
-                add_tracking_entry(
-                    order,
-                    "PENDING",
-                    "Order placed successfully"
-                )
-
-                # =================================================
-                # RAZORPAY PAYMENT
-                # =================================================
+                cart_items.update(is_deleted=True)
+                add_tracking_entry(order,"PENDING","Order placed successfully")
 
                 if payment_method != "COD":
-
-                    client = razorpay.Client(
-                        auth=(
-                            settings.RAZORPAY_KEY_ID,
-                            settings.RAZORPAY_KEY_SECRET
-                        )
-                    )
-
-                    razorpay_order = client.order.create(
-                        {
-                            "amount": int(
-                                total_amount * 100
-                            ),
+                    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID,settings.RAZORPAY_KEY_SECRET))
+                    razorpay_order = client.order.create({
+                            "amount": int(total_amount * 100),
                             "currency": "INR",
-                            "receipt": str(
-                                order.order_id
-                            ),
+                            "receipt": str(order.order_id),
                             "payment_capture": 1
                         }
                     )
-
-                    order.payment_id = (
-                        razorpay_order["id"]
-                    )
-
-                    order.payment_response = (
-                        razorpay_order
-                    )
-
-                    order.save(
-                        update_fields=[
-                            "payment_id",
-                            "payment_response"
-                        ]
-                    )
-
+                    order.payment_id = (razorpay_order["id"])
+                    order.payment_response = (razorpay_order)
+                    order.save(update_fields=["payment_id","payment_response"])
                     razorpay_data = {
-
-                        "razorpay_order_id": (
-                            razorpay_order["id"]
-                        ),
-
-                        "razorpay_key": (
-                            settings.RAZORPAY_KEY_ID
-                        ),
-
-                        "amount": (
-                            razorpay_order["amount"]
-                        ),
-
-                        "currency": (
-                            razorpay_order["currency"]
-                        )
+                        "razorpay_order_id": (razorpay_order["id"]),
+                        "razorpay_key": (settings.RAZORPAY_KEY_ID),
+                        "amount": (razorpay_order["amount"]),
+                        "currency": (razorpay_order["currency"])
                     }
 
-                # =================================================
-                # WHATSAPP MESSAGE
-                # =================================================
-
                 whatsapp_message = f"""
-Your order has been placed successfully.
-
-Order ID : {order.order_id}
-
-Total Amount : ₹{order.total_amount}
-
-Products :
-"""
-
+                    Your order has been placed successfully.
+                    Order ID : {order.order_id}
+                    Total Amount : ₹{order.total_amount}
+                    Products :
+                    """
+                
                 for item in order_items_response:
-
                     whatsapp_message += f"""
+                        Product : {item['product_name']}
+                        Quantity : {item['quantity']}
+                        Price : ₹{item['total_amount']}
+                        """
 
-Product : {item['product_name']}
-Quantity : {item['quantity']}
-Price : ₹{item['total_amount']}
-"""
-
-                whatsapp_message += """
-
-Thank you for shopping with us.
-"""
-
-                send_whatsapp_message(
-                    mobile=shipping_address.contact_no,
-                    message=whatsapp_message
-                )
-
-                # =================================================
-                # ADMIN NOTIFICATION
-                # =================================================
+                whatsapp_message += """Thank you for shopping with us."""
+                send_whatsapp_message(mobile=shipping_address.contact_no,message=whatsapp_message)
 
                 Notify_Admin.objects.create(
                     title="New Order Received",
@@ -362,52 +198,19 @@ Thank you for shopping with us.
                     order=order
                 )
 
-            # =====================================================
-            # SUCCESS RESPONSE
-            # =====================================================
-
             response_data = {
-
                 "status": "success",
-
                 "message": "Order placed successfully",
-
                 "data": {
-
-                    # =============================================
-                    # USER DETAILS
-                    # =============================================
-
                     "user_details": {
-
                         "user_id": user.id,
-
-                        "full_name": (
-                            f"{user.first_name} "
-                            f"{user.last_name}"
-                        ).strip(),
-
+                        "full_name": (f"{user.first_name} "f"{user.last_name}").strip(),
                         "email": user.email,
-
-                        "mobile_number": (
-                            shipping_address.contact_no
-                        )
+                        "mobile_number": (shipping_address.contact_no)
                     },
-
-                    # =============================================
-                    # SHIPPING ADDRESS
-                    # =============================================
-
                     "shipping_address": {
-
-                        "name": (
-                            shipping_address.contact_name
-                        ),
-
-                        "mobile_number": (
-                            shipping_address.contact_no
-                        ),
-
+                        "name": (shipping_address.contact_name),
+                        "mobile_number": (shipping_address.contact_no),
                         "full_address": (
                             f"{shipping_address.house_no}, "
                             f"{shipping_address.area_street}, "
@@ -416,120 +219,42 @@ Thank you for shopping with us.
                             f"{shipping_address.state} - "
                             f"{shipping_address.pincode}"
                         ),
-
-                        "city": (
-                            shipping_address.city
-                        ),
-
-                        "state": (
-                            shipping_address.state
-                        ),
-
-                        "country": (
-                            shipping_address.country
-                        ),
-
-                        "pincode": (
-                            shipping_address.pincode
-                        )
+                        "city": (shipping_address.city),
+                        "state": (shipping_address.state),
+                        "country": (shipping_address.country),
+                        "pincode": (shipping_address.pincode)
                     },
-
-                    # =============================================
-                    # ORDER DETAILS
-                    # =============================================
 
                     "order_details": {
-
                         "order_id": order.order_id,
-
                         "order_db_id": order.id,
-
                         "order_status": order.status,
-
-                        "payment_method": (
-                            order.payment_method
-                        ),
-
-                        "payment_status": (
-                            order.payment_status
-                        ),
-
-                        "expected_delivery_date": (
-                            timezone.now() +
-                            timedelta(days=5)
-                        ).date()
+                        "payment_method": (order.payment_method),
+                        "payment_status": (order.payment_status),
+                        "expected_delivery_date": (timezone.now() +timedelta(days=5)).date()
                     },
-
-                    # =============================================
-                    # PRICE DETAILS
-                    # =============================================
 
                     "price_details": {
-
-                        "subtotal": float(
-                            order.subtotal
-                        ),
-
-                        "product_discount": float(
-                            order.discount_amount
-                        ),
-
-                        "coupon_discount": float(
-                            order.coupon_discount
-                        ),
-
-                        "shipping_charge": float(
-                            order.shipping_charge
-                        ),
-
-                        "tax_amount": float(
-                            order.tax_amount
-                        ),
-
-                        "total_amount": float(
-                            order.total_amount
-                        ),
-
-                        "total_saved_amount": float(
-                            total_saved_amount
-                        )
+                        "subtotal": float(order.subtotal),
+                        "product_discount": float(order.discount_amount),
+                        "coupon_discount": float(order.coupon_discount),
+                        "shipping_charge": float(order.shipping_charge),
+                        "tax_amount": float(order.tax_amount),
+                        "total_amount": float(order.total_amount),
+                        "total_saved_amount": float(total_saved_amount)
                     },
-
-                    # =============================================
-                    # ORDERED PRODUCTS
-                    # =============================================
-
-                    "ordered_products": (
-                        order_items_response
-                    ),
-
-                    # =============================================
-                    # PAYMENT GATEWAY
-                    # =============================================
-
-                    "payment_gateway": (
-                        razorpay_data
-                    )
+                    "ordered_products": (order_items_response),
+                    "payment_gateway": (razorpay_data)
                 }
             }
-
-            return Response(
-                response_data,
-                status=status.HTTP_201_CREATED
-            )
+            return Response(response_data,status=status.HTTP_201_CREATED)
 
         except Exception as e:
+            return Response({"status": "error","message": (f"{INTERNAL_SERVER_ERROR} - Internal server error: {str(e)}")},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)            
 
-            return Response(
-                {
-                    "status": "error",
-                    "message": (
-                        f"{INTERNAL_SERVER_ERROR} - "
-                        f"{str(e)}"
-                    )
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )            
+
+
 
 class CancelOrderAPIView(APIView):
     permission_classes = [IsAuthenticated]
