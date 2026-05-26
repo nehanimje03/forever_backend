@@ -78,22 +78,73 @@ class Cart(models.Model):
 
 
 
+from django.db import models
+from django.db.models import Q
+
+
 class CartItem(models.Model):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey('products.Product', on_delete=models.CASCADE)
+
+    cart = models.ForeignKey(
+        Cart,
+        on_delete=models.CASCADE,
+        related_name='items'
+    )
+
+    product = models.ForeignKey(
+        'products.Product',
+        on_delete=models.CASCADE
+    )
+
     quantity = models.PositiveIntegerField(default=1)
-    size = models.CharField(max_length=100, blank=True, null=True)
-    color = models.CharField(max_length=20, blank=True, null=True)
+
+    size = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    color = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+
     is_deleted = models.BooleanField(default=False)
-    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='cartitem_created')
-    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='cartitem_updated')
+
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='cartitem_created'
+    )
+
+    updated_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='cartitem_updated'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
+
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = 'sa_cart_item'
-        unique_together = ['cart', 'product', 'size', 'color', 'is_deleted']
-    
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    'cart',
+                    'product',
+                    'size',
+                    'color'
+                ],
+                condition=Q(is_deleted=False),
+                name='unique_active_cart_item'
+            )
+        ]
+
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
     

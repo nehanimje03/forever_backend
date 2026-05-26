@@ -25,21 +25,58 @@ class CartAPIView(APIView):
 
 
     def add_to_cart(self, request):
-        try:
-            product_id = int(request.data.get("product_id"))
-            quantity = int(request.data.get("quantity"))
 
-            required = ['product_id', 'quantity']
-            missing = check_missing_fields(request.data, required)
+        try:
+
+            required = ["product_id", "quantity"]
+
+            missing = check_missing_fields(
+                request.data,
+                required
+            )
+
             if missing:
                 return missing
 
+            try:
+                product_id = int(
+                    request.data.get("product_id")
+                )
+
+                quantity = int(
+                    request.data.get("quantity")
+                )
+
+            except (TypeError, ValueError):
+
+                return Response(
+                    {
+                        "status": "fail",
+                        "message": (
+                            f"{BAD_REQUEST} - "
+                            f"Invalid product_id or quantity"
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             if quantity <= 0:
-                return Response({'status': 'fail','message': f'{BAD_REQUEST} - Quantity must be greater than 0'},
-                                status=status.HTTP_400_BAD_REQUEST)
+
+                return Response(
+                    {
+                        "status": "fail",
+                        "message": (
+                            f"{BAD_REQUEST} - "
+                            f"Quantity must be greater than 0"
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             size = request.data.get("size")
             color = request.data.get("color")
+
+            user = request.user
 
             product = Product.objects.filter(
                 id=product_id,
@@ -48,67 +85,159 @@ class CartAPIView(APIView):
             ).first()
 
             if not product:
-                return Response({'status': 'fail','message': f'{BAD_REQUEST} - Product not found'},
-                                status=status.HTTP_400_BAD_REQUEST)
+
+                return Response(
+                    {
+                        "status": "fail",
+                        "message": (
+                            f"{NOT_FOUND} - Product not found"
+                        )
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
             if product.stock <= 0:
-                return Response({'status': 'fail','message': f'{BAD_REQUEST} - Product is Out Of Stock'},
-                                status=status.HTTP_400_BAD_REQUEST)
+
+                return Response(
+                    {
+                        "status": "fail",
+                        "message": (
+                            f"{BAD_REQUEST} - "
+                            f"Product is out of stock"
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             quantity = min(quantity, product.stock)
 
             with transaction.atomic():
-                cart, _ = Cart.objects.select_for_update().get_or_create(
-                    user=request.user,
+
+                cart, created = Cart.objects.select_for_update().get_or_create(
+                    user=user,
                     is_deleted=False,
-                    defaults={'created_by': request.user}
+                    defaults={
+                        "created_by": user
+                    }
                 )
 
                 cart_item = CartItem.objects.select_for_update().filter(
                     cart=cart,
                     product=product,
                     size=size,
-                    color=color,
-                    is_deleted=False
+                    color=color
                 ).first()
 
-                if cart_item:
-                    new_quantity = min(cart_item.quantity + quantity, product.stock)
+                # -----------------------------------------
+                # RESTORE SOFT DELETED ITEM
+                # -----------------------------------------
+
+                if cart_item and cart_item.is_deleted:
+
+                    new_quantity = min(
+                        quantity,
+                        product.stock
+                    )
+
+                    cart_item.is_deleted = False
                     cart_item.quantity = new_quantity
-                    cart_item.updated_by = request.user
-                    cart_item.save(update_fields=["quantity", "updated_by"])
+                    cart_item.updated_by = user
+
+                    cart_item.save(
+                        update_fields=[
+                            "is_deleted",
+                            "quantity",
+                            "updated_by",
+                            "updated_at"
+                        ]
+                    )
+
+                # -----------------------------------------
+                # UPDATE EXISTING ITEM
+                # -----------------------------------------
+
+                elif cart_item:
+
+                    new_quantity = min(
+                        cart_item.quantity + quantity,
+                        product.stock
+                    )
+
+                    cart_item.quantity = new_quantity
+                    cart_item.updated_by = user
+
+                    cart_item.save(
+                        update_fields=[
+                            "quantity",
+                            "updated_by",
+                            "updated_at"
+                        ]
+                    )
+
+                # -----------------------------------------
+                # CREATE NEW ITEM
+                # -----------------------------------------
+
                 else:
+
                     cart_item = CartItem.objects.create(
                         cart=cart,
                         product=product,
+                        quantity=quantity,
                         size=size,
                         color=color,
-                        quantity=quantity,
-                        created_by=request.user
+                        created_by=user
                     )
 
                 cart.refresh_from_db()
 
-            product_data = ProductListSerializer(product,context={"request": request}).data
-
-            response_data = {
-                "status": "success",
-                "message": f"{SUCCESS} - Item added to cart",
-                "data": {
-                    "cart_id": cart.id,
-                    "cart_item_id": cart_item.id,
-                    "quantity": cart_item.quantity,
-                    "cart_total_items": cart.total_items,
-                    "cart_total_price": str(cart.total_price),
-                    "product": product_data
+            product_data = ProductListSerializer(
+                product,
+                context={
+                    "request": request
                 }
-            }
-            return Response(response_data, status=status.HTTP_201_CREATED)
+            ).data
+
+            return Response(
+                {
+                    "status": "success",
+                    "message": (
+                        f"{SUCCESS} - Item added to cart"
+                    ),
+                    "data": {
+
+                        "cart_id": cart.id,
+
+                        "cart_item_id": cart_item.id,
+
+                        "quantity": cart_item.quantity,
+
+                        "cart_total_items": (
+                            cart.total_items
+                        ),
+
+                        "cart_total_price": str(
+                            cart.total_price
+                        ),
+
+                        "product": product_data
+                    }
+                },
+                status=status.HTTP_200_OK
+            )
 
         except Exception as e:
-            return Response({'status': 'error', 'message': f'{INTERNAL_SERVER_ERROR} - Internal Server Error - {str(e)}'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+            return Response(
+                {
+                    "status": "error",
+                    "message": (
+                        f"{INTERNAL_SERVER_ERROR} - "
+                        f"{str(e)}"
+                    )
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def increase_quantity(self, request):
         try:
