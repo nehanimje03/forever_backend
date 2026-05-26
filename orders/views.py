@@ -1,6 +1,6 @@
 # Standard Library Imports
 from django.db.models import Q
-import razorpay
+import stripe
 
 
 # Django Imports

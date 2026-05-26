@@ -29,7 +29,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-7%k+w3l*&15zybtdqq!!z+l@#wmxsyxoi^ggg6(q4ffbceny10'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
+
+DEBUG = False
 
 ALLOWED_HOSTS = ['127.0.0.1','localhost','foreverecommerce.pythonanywhere.com']
 
@@ -188,5 +190,16 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
 
-RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
-RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
+import stripe
+from decouple import config
+FRONTEND_URL = "http://localhost:3000"
+
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = config(
+    "STRIPE_PUBLISHABLE_KEY"
+)
+STRIPE_WEBHOOK_SECRET = config(
+    "STRIPE_WEBHOOK_SECRET"
+)
+
+stripe.api_key = STRIPE_SECRET_KEY
