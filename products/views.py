@@ -1,5 +1,4 @@
 # Standard Library Imports
-from django.db.models import Q
 
 
 # Django Imports
@@ -10,7 +9,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from django.utils import timezone 
-
+from django.db.models import Q, Min, Max
 
 # Project Imports
 from authentication.models import *

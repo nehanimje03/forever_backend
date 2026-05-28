@@ -23,7 +23,7 @@ urlpatterns = [
     path('create-address/', AddressApiView.as_view()),
     path('get-address/', AddressApiView.as_view()),
     path('update-address/', AddressApiView.as_view()),
-    path('delete-address/', AddressApiView.as_view()),
+    path('remove-address/', AddressApiView.as_view()),
     path('set-default-addresses/', AddressApiView.as_view()),
 
 

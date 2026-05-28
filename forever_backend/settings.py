@@ -29,9 +29,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-7%k+w3l*&15zybtdqq!!z+l@#wmxsyxoi^ggg6(q4ffbceny10'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
+DEBUG = True
 
-DEBUG = False
+# DEBUG = False
 
 ALLOWED_HOSTS = ['127.0.0.1','localhost','foreverecommerce.pythonanywhere.com']
 

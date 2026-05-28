@@ -227,12 +227,8 @@ nums = [10, 20, 4, 45, 99]
 # first = nums[0]
 # second = nums[0]
 
-for n in nums:
-    if n > first:
-        first = n
+s = "python"
+rev = ""
 
-for n in nums:
-    if n > second and n != first:
-        second = n
-
-print(second)
+for char in s:
+    rev = char + rev

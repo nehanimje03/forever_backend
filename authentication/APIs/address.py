@@ -239,14 +239,7 @@ class AddressApiView(APIView):
             if address.user != request.user:
                 return Response({'status': 'fail', 'message': f'{UNAUTHORIZED} - Unauthorized access'}, 
                                 status=status.HTTP_403_FORBIDDEN)
-            
-            address_count = Address.objects.filter(user=request.user, is_deleted=False).count()
-            if address_count <= 1:
-                return Response({
-                    'status': 'fail',
-                    'message': f'{BAD_REQUEST} - Cannot delete last address. Add another address first.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-                
+                            
             with transaction.atomic():
                 address.is_deleted = True
                 address.save()
