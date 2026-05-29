@@ -88,6 +88,7 @@ class ProductFilterAPIView(APIView):
 
             response_data = {
                 "status": "success",
+                "message": f"{SUCCESS} - Products Fetched Successfully",
                 "total_products": products.count(),
                 "filters": {
                     "categories": list(categories),

@@ -680,7 +680,7 @@ class CreateOrderAPIView(APIView):
                         # USER DETAILS
                         # =========================================
 
-                        "user_details": {
+                        "customer_details": {
 
                             "user_id": user.id,
 
