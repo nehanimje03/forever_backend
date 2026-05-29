@@ -2,6 +2,10 @@ from ...views import *
 
 
 
+from ...views import *
+from django.db.models import Q, Min, Max
+
+
 class ProductFilterAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -11,6 +15,12 @@ class ProductFilterAPIView(APIView):
             subcategory = request.GET.get("subcategory")
             size = request.GET.get("size")
             search = request.GET.get("search")
+            min_price = request.GET.get("min_price")
+            max_price = request.GET.get("max_price")
+            bestseller = request.GET.get("bestseller")
+            latest = request.GET.get("latest")
+            in_stock = request.GET.get("in_stock")
+            sort_by = request.GET.get("sort_by")
 
             products = Product.objects.filter(is_deleted=False,is_deactive=False)
 
@@ -23,25 +33,21 @@ class ProductFilterAPIView(APIView):
                 )
 
             if category:
-                category_list = category.split(",")
+                category_list = [c.strip()for c in category.split(",") if c.strip()]
                 products = products.filter(category__in=category_list)
 
-
             if subcategory:
-                subcategory_list = subcategory.split(",")
+                subcategory_list = [s.strip()for s in subcategory.split(",") if s.strip()]
                 products = products.filter(subcategory__in=subcategory_list)
 
             if size:
-                size_list = size.split(",")
+                size_list = [s.strip() for s in size.split(",") if s.strip()]
 
-                query = Q()
+                size_query = Q()
                 for s in size_list:
-                    query |= Q(sizes__icontains=s)
+                    size_query |= Q(sizes__icontains=s)
 
-                products = products.filter(query)
-
-            min_price = request.GET.get("min_price")
-            max_price = request.GET.get("max_price")
+                products = products.filter(size_query)
 
             if min_price:
                 products = products.filter(price__gte=min_price)
@@ -49,19 +55,15 @@ class ProductFilterAPIView(APIView):
             if max_price:
                 products = products.filter(price__lte=max_price)
 
-            bestseller = request.GET.get("bestseller")
-            if bestseller == "true":
+            if bestseller and bestseller.lower() == "true":
                 products = products.filter(is_bestseller=True)
 
-            latest = request.GET.get("latest")
-            if latest == "true":
+            if latest and latest.lower() == "true":
                 products = products.filter(is_latest_arrival=True)
 
-            in_stock = request.GET.get("in_stock")
-            if in_stock == "true":
+            if in_stock and in_stock.lower() == "true":
                 products = products.filter(stock__gt=0)
 
-            sort_by = request.GET.get("sort_by")
             if sort_by == "price_low_to_high":
                 products = products.order_by("price")
 
@@ -81,10 +83,12 @@ class ProductFilterAPIView(APIView):
                 products = products.order_by("-created_at")
 
             serializer = ProductListSerializer(products,many=True,context={"request": request})
+            base_queryset = Product.objects.filter(is_deleted=False,is_deactive=False)
 
-            categories = Product.objects.filter(is_deleted=False,is_deactive=False).values_list("category",flat=True).distinct()
-            subcategories = Product.objects.filter(is_deleted=False,is_deactive=False).values_list("subcategory",flat=True).distinct()
-            price_range = Product.objects.filter(is_deleted=False,is_deactive=False).aggregate(min_price=Min("price"),max_price=Max("price"))
+            categories = base_queryset.values_list("category",flat=True).distinct()
+            subcategories = base_queryset.values_list("subcategory",flat=True).distinct()
+
+            price_range = base_queryset.aggregate(min_price=Min("price"),max_price=Max("price"))
 
             response_data = {
                 "status": "success",
@@ -97,8 +101,9 @@ class ProductFilterAPIView(APIView):
                 },
                 "data": serializer.data
             }
-            return Response(response_data, status=status.HTTP_200_OK)
+
+            return Response(response_data,status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response({"status": "error","message":f"{INTERNAL_SERVER_ERROR} - Internal server error: {str(e)} "}, 
+            return Response({"status": "error","message": f"{INTERNAL_SERVER_ERROR} - Internal server error: {str(e)}"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
