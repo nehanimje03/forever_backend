@@ -3,7 +3,6 @@ from ...views import *
 
 
 from ...views import *
-from django.db.models import Q, Min, Max
 
 
 class ProductFilterAPIView(APIView):

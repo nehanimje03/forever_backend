@@ -161,73 +161,33 @@ import random
 
 
 class Order(models.Model):
-    """
-    Enterprise Production Level Order Model
-    Amazon / Flipkart Style Architecture
-    """
-
-    # ==========================================
-    # ORDER STATUS
-    # ==========================================
-
     ORDER_STATUS_CHOICES = [
-
         ('PENDING', 'Pending'),
-
         ('CONFIRMED', 'Confirmed'),
-
         ('PROCESSING', 'Processing'),
-
         ('PACKED', 'Packed'),
-
         ('SHIPPED', 'Shipped'),
-
         ('OUT_FOR_DELIVERY', 'Out for Delivery'),
-
         ('DELIVERED', 'Delivered'),
-
         ('CANCELLED', 'Cancelled'),
-
         ('RETURN_REQUESTED', 'Return Requested'),
-
         ('RETURN_APPROVED', 'Return Approved'),
-
         ('RETURNED', 'Returned'),
-
         ('REFUNDED', 'Refunded'),
     ]
 
-    # ==========================================
-    # PAYMENT STATUS
-    # ==========================================
-
     PAYMENT_STATUS_CHOICES = [
-
         ('PENDING', 'Pending'),
-
         ('PAID', 'Paid'),
-
         ('FAILED', 'Failed'),
-
         ('REFUNDED', 'Refunded'),
-
         ('UNPAID', 'Unpaid'),
     ]
 
-    # ==========================================
-    # PAYMENT METHOD
-    # ==========================================
-
     PAYMENT_METHOD_CHOICES = [
-
         ('COD', 'Cash On Delivery'),
-
         ('STRIPE', 'Stripe'),
     ]
-
-    # ==========================================
-    # ORDER IDENTIFICATION
-    # ==========================================
 
     order_id = models.CharField(
         max_length=30,
