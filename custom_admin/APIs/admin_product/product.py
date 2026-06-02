@@ -4,7 +4,7 @@ from ...views import *
 class ProductApiView(APIView):
     permission_classes = [IsAuthenticated, IsSuperAdmin]
 
-    def post(self, request):
+    def post(self, request): 
         try:
             if 'page_number' in request.data and 'page_size' in request.data:
                 return self.get_product(request)
@@ -52,8 +52,19 @@ class ProductApiView(APIView):
                     return Response({'status': 'fail','message': f'{BAD_REQUEST} - Product name already exists'},
                                     status=status.HTTP_400_BAD_REQUEST)
 
-                if isinstance(sizes, list):
-                    sizes = ','.join(sizes)
+                if sizes:
+                    try:
+                        if isinstance(sizes, str):
+                            sizes = json.loads(sizes)
+
+                        if isinstance(sizes, list):
+                            sizes = ",".join(
+                                [str(size).strip() for size in sizes if str(size).strip()]
+                            )
+
+                    except Exception:
+                        if isinstance(sizes, str):
+                            sizes = sizes.strip()
 
                 product = Product.objects.create(
                     name=name,
@@ -89,7 +100,7 @@ class ProductApiView(APIView):
                         'is_dea'
                         'category': product.category,
                         'subcategory': product.subcategory,
-                        'sizes': product.sizes.split(',') if product.sizes else [],
+                        'sizes': [size.strip() for size in product.sizes.split(',')] if product.sizes else [],
                         'discount_percentage': f"{int(product.discount_percentage)}%",                        
                         'created_by': product.created_by.id if product.created_by else None,
                         'product_image': image_urls
@@ -225,8 +236,19 @@ class ProductApiView(APIView):
                     for image in product_image:
                         ProductImage.objects.create(product=product, image=image)
 
-                if isinstance(sizes, list):
-                    sizes = ",".join(sizes)
+                if sizes:
+                    try:
+                        if isinstance(sizes, str):
+                            sizes = json.loads(sizes)
+
+                        if isinstance(sizes, list):
+                            sizes = ",".join(
+                                [str(size).strip() for size in sizes if str(size).strip()]
+                            )
+
+                    except Exception:
+                        if isinstance(sizes, str):
+                            sizes = sizes.strip()
 
                 if name:
                     product.name = name.strip()
@@ -279,7 +301,7 @@ class ProductApiView(APIView):
                     "is_latest_arrival": product.is_latest_arrival,
                     "category": product.category,
                     "subcategory": product.subcategory,
-                    "sizes": product.sizes.split(",") if product.sizes else [],
+                    "sizes": [size.strip() for size in product.sizes.split(",")] if product.sizes else [],                    
                     "discount_percentage": f"{int(product.discount_percentage)}%",
                     "product_images": image_urls
                 }
