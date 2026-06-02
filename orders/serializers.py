@@ -37,82 +37,123 @@ class CreateOrderSerializer(serializers.Serializer):
     order_note = serializers.CharField(required=False,allow_blank=True)
 
 
+from rest_framework import serializers
+from .models import Order
+from .order_item_serializer import OrderItemSerializer
+from .order_tracking_serializer import OrderTrackingSerializer
+
+
 class OrderSerializer(serializers.ModelSerializer):
     """Complete Order Serializer"""
+
     items = OrderItemSerializer(many=True, read_only=True)
     tracking_history = OrderTrackingSerializer(many=True, read_only=True)
+
     total_items = serializers.IntegerField(read_only=True)
     order_status_display = serializers.CharField(read_only=True)
     can_cancel = serializers.BooleanField(read_only=True)
     can_return = serializers.BooleanField(read_only=True)
-    
-    # Shipping address fields combined
-    shipping_address_full = serializers.SerializerMethodField()
-    billing_address_full = serializers.SerializerMethodField()
-    
+
+    customer = serializers.SerializerMethodField()
+    shipping_address = serializers.SerializerMethodField()
+
     class Meta:
         model = Order
         fields = [
-            'id', 'order_id', 'tracking_number',
-            'user', 'order_date', 'updated_at',
-            
+            # Basic Order Info
+            'id',
+            'order_id',
+            'tracking_number',
+            'order_date',
+            'updated_at',
+
+            # Customer
+            'customer',
+
             # Order Summary
-            'subtotal', 'discount_amount', 'coupon_code', 'coupon_discount',
-            'shipping_charge', 'tax_amount', 'total_amount', 'total_items',
-            
+            'subtotal',
+            'discount_amount',
+            'coupon_code',
+            'coupon_discount',
+            'shipping_charge',
+            'tax_amount',
+            'total_amount',
+            'total_items',
+
             # Shipping Address
-            'shipping_name', 'shipping_email', 'shipping_phone',
-            'shipping_alternate_phone', 'shipping_address_line1',
-            'shipping_address_line2', 'shipping_landmark', 'shipping_city',
-            'shipping_state', 'shipping_pincode', 'shipping_country',
-            'shipping_address_full',
-            
-            # Billing Address
-            'same_as_shipping', 'billing_name', 'billing_address',
-            'billing_city', 'billing_state', 'billing_pincode',
-            'billing_address_full',
-            
+            'shipping_address',
+
+            # Raw Shipping Fields (optional)
+            'shipping_name',
+            'shipping_email',
+            'shipping_phone',
+            'shipping_alternate_phone',
+            'shipping_address_line1',
+            'shipping_address_line2',
+            'shipping_landmark',
+            'shipping_city',
+            'shipping_state',
+            'shipping_pincode',
+            'shipping_country',
+
+            # Billing
+            'same_as_shipping',
+            'billing_name',
+            'billing_address',
+            'billing_city',
+            'billing_state',
+            'billing_pincode',
+
             # Payment
-            'payment_method', 'payment_status', 'payment_id',
-            
+            'payment_method',
+            'payment_status',
+            'payment_id',
+
             # Status
-            'status', 'order_status_display', 'can_cancel', 'can_return',
+            'status',
+            'order_status_display',
+            'can_cancel',
+            'can_return',
             'order_note',
-            
+
             # Timestamps
-            'order_date', 'confirmed_at', 'processed_at', 'packed_at',
-            'shipped_at', 'delivered_at', 'cancelled_at',
-            
+            'confirmed_at',
+            'processed_at',
+            'packed_at',
+            'shipped_at',
+            'delivered_at',
+            'cancelled_at',
+
             # Related Data
-            'items', 'tracking_history',
+            'items',
+            'tracking_history',
         ]
-        read_only_fields = ['id', 'order_id', 'order_date', 'tracking_number']
-    
-    def get_shipping_address_full(self, obj):
+
+        read_only_fields = [
+            'id',
+            'order_id',
+            'tracking_number',
+            'order_date'
+        ]
+
+    def get_customer(self, obj):
         return {
-            'name': obj.shipping_name,
-            'email': obj.shipping_email,
-            'phone': obj.shipping_phone,
-            'address_line1': obj.shipping_address_line1,
-            'address_line2': obj.shipping_address_line2,
-            'landmark': obj.shipping_landmark,
-            'city': obj.shipping_city,
-            'state': obj.shipping_state,
-            'pincode': obj.shipping_pincode,
-            'country': obj.shipping_country,
-        }
-    
-    def get_billing_address_full(self, obj):
-        if obj.same_as_shipping:
-            return self.get_shipping_address_full(obj)
-        return {
-            'name': obj.billing_name,
-            'address': obj.billing_address,
-            'city': obj.billing_city,
-            'state': obj.billing_state,
-            'pincode': obj.billing_pincode,
+            "id": obj.user.id if obj.user else None,
+            "name": obj.shipping_name,
+            "email": obj.shipping_email,
+            "phone": obj.shipping_phone
         }
 
+    def get_shipping_address(self, obj):
+        return {
+            "address": obj.shipping_address_line1,
+            "address_line2": obj.shipping_address_line2,
+            "landmark": obj.shipping_landmark,
+            "city": obj.shipping_city,
+            "state": obj.shipping_state,
+            "pincode": obj.shipping_pincode,
+            "country": obj.shipping_country
+        }
 
 class OrderListSerializer(serializers.ModelSerializer):
     """Minimal Order Serializer for List View"""
