@@ -37,15 +37,9 @@ class CreateOrderSerializer(serializers.Serializer):
     order_note = serializers.CharField(required=False,allow_blank=True)
 
 
-from rest_framework import serializers
-from .models import Order
-from .order_item_serializer import OrderItemSerializer
-from .order_tracking_serializer import OrderTrackingSerializer
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    """Complete Order Serializer"""
-
     items = OrderItemSerializer(many=True, read_only=True)
     tracking_history = OrderTrackingSerializer(many=True, read_only=True)
 
