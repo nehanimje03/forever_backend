@@ -7,6 +7,7 @@ class AdminOrderListAPIView(APIView):
 
     def get(self, request):
         try:
+            
             orders = Order.objects.all().order_by('-order_date')
 
             status_filter = request.GET.get('status')
